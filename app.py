@@ -4,18 +4,20 @@ from slimesManager import SlimesManager
 from baseMap import BaseMap
 import baseMap
 from button import Button
+from PIL import Image
 
 def onAppStart(app):
-    app.width = 800
-    app.height = 800
+    app.width = 858
+    app.height = 600
     app.r = 100
     app.evaluateMap = loadMap(BaseSlimes.getSlimeName(), 'rectGrid', 
-                              app.width/2 - app.r, app.height/2 - 3*app.r,
+                              app.width/2 - app.r, app.height/2 - 2.5*app.r,
                               2.5*app.r, 0.8*app.r, 3, 2)
     app.stepsPerSecond = 1
     app.welcome_buttonList = welcome_loadButton(app)
     app.evaluate_buttonList = evaluate_loadButton(app)
     loadSlimeManager(app)
+    loadWheel(app)
 
 def loadSlimeManager(app):
     app.gameMap = loadMap('baseMap1', 'hexGrid', app.width/2, app.height/2, 
@@ -28,6 +30,11 @@ def loadMap(nameList, gridType, x, y, d, h, rows = 0, cols = 0):
     if isinstance(nameList, str):
         nameList = baseMap.getNameList(nameList)
     return BaseMap(nameList, gridType, x, y, d, h, rows, cols)
+
+def loadWheel(app):
+    app.wheelImg = Image.open(f"images/slimeWheel.png")
+    app.wheelImg = app.wheelImg.resize((150, 150))
+    app.wheelImg = CMUImage(app.wheelImg)
 
 def drawButton(buttonList):
     for button in buttonList:
@@ -91,6 +98,8 @@ def game_onStep(app):
 def game_redrawAll(app):
     app.slimesManager.drawSlimes()
     drawLabel(app.gameMap.counter, 200, 200, size=50)
+    drawImage(app.wheelImg, app.width/2 + 3 * app.r, app.height/2 - 2 * app.r, 
+              align = 'center')
 
 #---evaluate--------------------------------------------------------------------
 def loadSlimeCount(app):
@@ -101,7 +110,7 @@ def loadSlimeCount(app):
 
 def drawSlimeCount(app):
     countList = loadSlimeCount(app)
-    posList = BaseMap.rectGrid(app.width/2, app.height/2 - 3*app.r, 
+    posList = BaseMap.rectGrid(app.width/2, app.height/2 - 2.5*app.r, 
                                2.5*app.r, 0.8*app.r, 3, 2)
     for i in range(6):
         app.evaluateSlimeList[i].draw()

@@ -27,15 +27,8 @@ class BaseMap:
             for col in range(cols):
                 posList.append((x + col * d, y + row * h))
         return posList
-    
-    def helpGrid(x, y, r):
-        d = 0.5*r
-        posList = []
-        for i in range(2):
-            posList.append((x + i * d, y))
-        return posList
 
-#---baseMap objects---------------------------------
+#------------------------------------
 def getNameList(mapName):
     mapName = f'{mapName}_nameList'
     return globals()[mapName]

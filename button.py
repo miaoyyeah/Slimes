@@ -20,6 +20,9 @@ class Button:
     
     def __hash__(self):
         return hash(str(self))
+    
+    def __repr__(self):
+        return str(self.name)
 
     def onMousePressButton(self, mouseX, mouseY):
         if (self.x - self.width/2 < mouseX < self.x + self.width/2 and 
@@ -43,7 +46,4 @@ class Button:
             drawRect(self.x, self.y, self.width, self.height, align = 'center', 
                      border = self.border, fill = self.fill)
         drawLabel(self.name, self.x, self.y, size = 20)
-    
-    def repr(self):
-        return str(self.name)
 
