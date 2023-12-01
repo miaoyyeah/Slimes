@@ -1,4 +1,6 @@
+from cmu_graphics import *
 from baseSlimes import BaseSlimes
+import copy
 
 def distance(x1, y1, x2, y2):
     return ((x1 - x2)**2 + (y1 - y2)**2)**0.5
@@ -9,37 +11,82 @@ class SlimesManager:
         slimeList = []
         for pos in range(len(map.posList)):
                 x, y = map.posList[pos]
-                slimeList.append(BaseSlimes(map.nameList[pos], x, y))
+                slimeList.append(BaseSlimes(map.indexList[pos], x, y))
         return slimeList
-    
-    def loadSlimeCount():
-        slimeCount = dict()
-        nameList = BaseSlimes.getSlimeName()
-        for name in nameList:
-            slimeCount[name] = 0
-        return slimeCount
 
     def __init__(self, map):
         self.slimeList = SlimesManager.loadSlimeList(map)
-        self.slimesPair = []
+        self.indexPair = []
         self.score = 0
-        self.slimeCount = SlimesManager.loadSlimeCount()
+        self.hint = self.canSolve(map.indexList)[:2]
+        self.slimeCount = self.loadSlimeCount()
+        self.undoMix = None
+        self.redoMix = None
+    
+    def loadSlimeCount(self):
+        slimeCount = dict()
+        for index in range(6):
+            slimeCount[index] = 0
+        return slimeCount
+    
+    #---canSolve methods--------------------------------------------------------
+    
+    def canSolve(self, indexList):
+        return self.solveHelper(copy.copy(indexList), [], [])
+
+    def solveHelper(self, remainL, numPair, solL):
+        if remainL == []:
+            return solL
+        else:
+            for i in range(len(remainL)):
+                nextNum = remainL[i]
+                if self.canMix(nextNum, numPair):
+                    newNumPair = numPair + [nextNum]
+                    if len(newNumPair) == 2:
+                        newNumPair = self.manageNumPair(newNumPair)
+                    newRemainL = remainL[:i] + remainL[i + 1:]
+                    newSolL = solL + [remainL[i]]
+                    sol = self.solveHelper(newRemainL, newNumPair, newSolL)
+                    if sol != None:
+                        return sol
+            return None
+
+    def canMix(self, num, numPair):
+        if len(numPair) < 1 or num == numPair[0]:
+            return True
+        else:
+            dif = abs(num - numPair[0])
+            return dif == 0 or dif == 2 or dif == 4
+
+    def manageNumPair(self, numPair):
+        dif = abs(numPair[0] - numPair[1])
+        sum = abs(numPair[0] + numPair[1])
+        if dif == 0:
+            return []
+        elif dif == 2:
+            newNum = int(sum / 2)
+        elif sum == 4:
+            newNum = int((sum + 6)/2)
+        elif sum == 6:
+            newNum = int((sum - 6)/2)
+        return [newNum]
     
     #---SlimesMix methods-------------------------------------------------------
     def mousePressSlimes(self, mouseX, mouseY):
         index = self.clickSlimesIndex(mouseX, mouseY)
         if index != None:
-            length = len(self.slimesPair)
-            slime = self.slimeList[index]
+            length = len(self.indexPair)
             if length == 0:
-                self.slimesPair.append(slime)
-            if length == 1 and index != self.slimesPair[0]:
-                self.slimesPair.append(slime)
-                self.mixSlimes()
+                self.indexPair.append(index)
+            elif length == 1 and index != self.indexPair[0]:
+                self.indexPair.append(index)
+                status = self.mixSlimes()
+                if status:
+                    return self.canSlimeSolve()
+            else:
+                self.indexPair = []
         else:
-            self.slimePair = []
-        if self.slimeList == []:
-            return 'win'
+            self.indexPair = []
         return None
     
     # check if mouse click on one slime
@@ -58,44 +105,104 @@ class SlimesManager:
     # if dif == 2 or 4: mix
     # elif dif == 0: remove
     def mixSlimes(self):
-        slime1, slime2 = self.slimesPair[0], self.slimesPair[1]
-        slimeName = BaseSlimes.getSlimeName()
+        if self.indexPair[0] == self.indexPair[1]:
+            self.indexPair = []
+            return
+        index1, index2 = self.indexPair[0], self.indexPair[1]
         slimeList = self.slimeList
+        slime1, slime2 = slimeList[index1], slimeList[index2]
         
         dif = abs(slime1.index - slime2.index)
+        sum = abs(slime1.index + slime2.index)
 
         if dif == 2 or dif == 4:
             if dif == 2:
-                newIndex = int((slime1.index + slime2.index)/2)
-            else:
-                newIndex = int((slime1.index + slime2.index + 6)/2)
+                newIndex = int((sum)/2)
+            elif sum == 4:
+                newIndex = int((sum + 6)/2)
+            elif sum == 6:
+                newIndex = int((sum - 6)/2)
 
-            newSlime = BaseSlimes(slimeName[newIndex], slime2.x, slime2.y)
+            newSlime = BaseSlimes(newIndex, slime2.x, slime2.y)
+            self.undoMix = [slime1, slime2, newSlime]
             slimeList.append(newSlime)
             self.managePair()
-            print(self.score)
+            return True
 
         elif dif == 0:
+            self.undoMix = [slime1, slime2]
             self.managePair()
-            print(self.score)
+            return True
         
         else:
-            self.slimesPair = []
+            self.indexPair = []
+            return False
     
     def managePair(self):
-        for slime in self.slimesPair:
-            self.slimeCount[slime.name] += 1
+        slimesPair = [self.slimeList[self.indexPair[0]], 
+                      self.slimeList[self.indexPair[1]]]
+        for slime in slimesPair:
+            self.slimeCount[slime.index] += 1
             self.slimeList.remove(slime)
             self.score += slime.value
-        self.slimesPair = []
+        self.indexPair = []
+        self.redoMix = None
 
     def drawSlimes(self):
         for slime in self.slimeList:
             slime.draw()
-
     
-
+    def drawPair(self):
+        if len(self.indexPair) == 1:
+            i = self.indexPair[0]
+            x, y = self.slimeList[i].x, self.slimeList[i].y
+            r = 0.25 * self.slimeList[i].r
+            drawCircle(x, y, r, border = 'red', fill = None)
     
+    def canSlimeSolve(self):
+        if self.slimeList == []:
+            return 'win'
+        indexList = []
+        for slime in self.slimeList:
+            indexList.append(slime.index)
+        solL = self.canSolve(indexList)
+        if solL == None:
+            return 'lose'
+        else:
+            self.hint = solL[:2]
+
+    def drawHint(self):
+        indexList = []
+        for slime in self.slimeList:
+            indexList.append(slime.index)
+        for i in self.hint:
+            if i in indexList:
+                index = indexList.index(i)
+                slime = self.slimeList[index]
+                x = slime.x
+                y = slime.y
+                r = 0.25 * slime.r
+                drawCircle(x, y, r, border = 'white', fill = None)
+                indexList[index] = -1
 
 
-
+    def undo(self):
+        if self.undoMix != None:
+            self.redoMix = copy.copy(self.undoMix)
+            if len(self.undoMix) == 3:
+                self.slimeList.remove(self.undoMix.pop())
+            for slime in self.undoMix:
+                self.slimeList.append(slime)
+                self.score -= slime.value
+            self.undoMix = None
+    
+    def redo(self):
+        if self.redoMix != None:
+            self.undoMix = copy.copy(self.redoMix)
+            print(len(self.redoMix))
+            if len(self.redoMix) == 3:
+                self.slimeList.append(self.redoMix.pop())
+            for slime in self.redoMix:
+                self.score += slime.value
+                self.slimeList.remove(slime)
+            self.redoMix = None

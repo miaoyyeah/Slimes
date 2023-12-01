@@ -13,16 +13,16 @@ class BaseSlimes:
     def getSlimeValue(name):
         return BaseSlimes.slimeValue[name]
 
-    def __init__(self, name, x = 0, y = 0, r = 100):
+    def __init__(self, index, x = 0, y = 0, r = 100):
         self.x = x
         self.y = y
         self.r = r
 
-        self.name = name
-        self.index = BaseSlimes.slimeName.index(name)
-        self.value = BaseSlimes.slimeValue[name]
+        self.index = index
+        self.name = BaseSlimes.slimeName[index]
+        self.value = BaseSlimes.slimeValue[self.name]
 
-        self.image = Image.open(f"images/baseSlime/baseSlime_{name}.png")
+        self.image = Image.open(f"images/baseSlime/baseSlime_{self.name}.png")
         self.image = self.image.resize((r, r))
         self.image = CMUImage(self.image)
     

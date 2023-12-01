@@ -3,7 +3,7 @@ from PIL import Image
 
 #---Button class---------------------------------
 class Button:
-    def __init__(self, name, link, x = 0, y = 0, width = 200, height = 50, 
+    def __init__(self, fun, text = None, x = 0, y = 0, width = 200, height = 50, 
                  border = "black", fill = 'papayaWhip'):
         self.x = x
         self.y = y
@@ -12,38 +12,39 @@ class Button:
         self.border = border
 
         self.fill = fill
-        self.pressFill = 'lightGray'
-        self.isPress = False
+        self.selectedFill = 'lightGray'
+        self.selected = False
 
-        self.name = name
-        self.link = link
+        self.text = text
+        self.fun = fun
     
-    def __hash__(self):
-        return hash(str(self))
-    
-    def __repr__(self):
-        return str(self.name)
-
     def onMousePressButton(self, mouseX, mouseY):
-        if (self.x - self.width/2 < mouseX < self.x + self.width/2 and 
-            self.y - self.height/2 < mouseY < self.y + self.height/2):
-            self.isPress = True
-            print(self.isPress)
-    
+        if self.checkForPress(mouseX, mouseY):
+            self.selected = True
+            if not isinstance(self.fun, str):
+                self.fun(app)
+                return None
+
     def onMouseReleaseButton(self, mouseX, mouseY):
-        if (self.x - self.width/2 < mouseX < self.x + self.width/2 and 
-            self.y - self.height/2 < mouseY < self.y + self.height/2):
-            self.isPress = False
-            print(self.isPress)
-            return self.link
-        return None
+        self.selected = False
+        if self.checkForPress(mouseX, mouseY):
+            print(self.text)
+            if isinstance(self.fun, str):
+                return self.fun
+            else:
+                self.fun(app)
+                return None
 
     def draw(self):
-        if self.isPress == True:
-            drawRect(self.x, self.y, self.width, self.height, align = 'center', 
-                 border = self.border, fill = self.pressFill)
+        if self.selected:
+            fill = self.selectedFill
         else:
-            drawRect(self.x, self.y, self.width, self.height, align = 'center', 
-                     border = self.border, fill = self.fill)
-        drawLabel(self.name, self.x, self.y, size = 20)
+            fill = self.fill
+        drawRect(self.x, self.y, self.width, self.height, fill = fill, 
+                 align = 'center', border = self.border)
+        if self.text != None:
+            drawLabel(self.text, self.x, self.y, size = 20)
 
+    def checkForPress(self, mouseX, mouseY):
+        return (self.x - self.width/2 < mouseX < self.x + self.width/2 and 
+            self.y - self.height/2 < mouseY < self.y + self.height/2)
