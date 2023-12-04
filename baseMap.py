@@ -5,13 +5,23 @@ import math
 # store baseMap object
 # store baseGrid
 class BaseMap:
-    def __init__(self, indexList, gridType, x, y, d, h, rows, cols):
+    gridDict = {7: "hexGrid", 10: "triGrid", 13: "starGrid"}
+    counterDict = {7: 40, 10: 60, 13: 90}
+
+    def __init__(self, indexList, x, y, d, h, rows, cols):
         self.indexList = indexList
-        self.gridType = gridType
+        
+        if len(indexList) in BaseMap.gridDict:
+            gridType = BaseMap.gridDict[len(indexList)]
+            self.counter = BaseMap.counterDict[len(indexList)]
+        else:
+            gridType = 'rectGrid'
+            self.counter = 0
+
         self.posList = getattr(BaseMap, gridType)(x, y, d, h, rows, cols)
-        self.counter = 60
         # math.ceil(len(indexList)/2*5)
-        self.level = math.floor((len(indexList) + len(set(indexList)))/8)
+
+        self.level = (len(indexList) - 7)//3 + 1
 
     def __hash__(self):
         return hash(str(self))
@@ -20,6 +30,20 @@ class BaseMap:
         posList =  [(x - d/2, y - h), (x + d/2, y - h),
                     (x - d, y), (x, y), (x + d, y),
                     (x - d/2, y + h), (x + d/2, y + h)]
+        return posList
+    
+    def triGrid(x, y, d, h, rows, cols):
+        posList = BaseMap.hexGrid(x, y, d, h, rows, cols)
+        posList.insert(0, (x, y - 2*h))
+        posList.insert(6, (x - 3*d/2, y + h))
+        posList.append((x + 3*d/2, y + h))
+        return posList
+    
+    def starGrid(x, y, d, h, rows, cols):
+        posList = BaseMap.triGrid(x, y, d, h, rows, cols)
+        posList.insert(1, (x - 3 * d/2, y - h))
+        posList.insert(4, (x + 3 * d/2, y - h))
+        posList.append((x, y + 2*h))
         return posList
     
     def rectGrid(x, y, d, h, rows, cols):

@@ -22,6 +22,7 @@ class SlimesManager:
         self.slimeCount = self.loadSlimeCount()
         self.undoMix = None
         self.redoMix = None
+        self.mixLegal = True
     
     def loadSlimeCount(self):
         slimeCount = dict()
@@ -83,6 +84,8 @@ class SlimesManager:
                 status = self.mixSlimes()
                 if status:
                     return self.canSlimeSolve()
+                else:
+                    self.mixLegal = False
             else:
                 self.indexPair = []
         else:
@@ -147,17 +150,6 @@ class SlimesManager:
             self.score += slime.value
         self.indexPair = []
         self.redoMix = None
-
-    def drawSlimes(self):
-        for slime in self.slimeList:
-            slime.draw()
-    
-    def drawPair(self):
-        if len(self.indexPair) == 1:
-            i = self.indexPair[0]
-            x, y = self.slimeList[i].x, self.slimeList[i].y
-            r = 0.25 * self.slimeList[i].r
-            drawCircle(x, y, r, border = 'red', fill = None)
     
     def canSlimeSolve(self):
         if self.slimeList == []:
@@ -170,21 +162,6 @@ class SlimesManager:
             return 'lose'
         else:
             self.hint = solL[:2]
-
-    def drawHint(self):
-        indexList = []
-        for slime in self.slimeList:
-            indexList.append(slime.index)
-        for i in self.hint:
-            if i in indexList:
-                index = indexList.index(i)
-                slime = self.slimeList[index]
-                x = slime.x
-                y = slime.y
-                r = 0.25 * slime.r
-                drawCircle(x, y, r, border = 'white', fill = None)
-                indexList[index] = -1
-
 
     def undo(self):
         if self.undoMix != None:
@@ -206,3 +183,33 @@ class SlimesManager:
                 self.score += slime.value
                 self.slimeList.remove(slime)
             self.redoMix = None
+
+    #---draw methods------------------------------------------------------------
+
+    def drawSlimes(self):
+        for slime in self.slimeList:
+            slime.draw()
+    
+    def drawPair(self):
+        if len(self.indexPair) == 1:
+            i = self.indexPair[0]
+            x, y = self.slimeList[i].x, self.slimeList[i].y
+            r = 0.25 * self.slimeList[i].r
+            drawCircle(x, y, r, border = 'red', fill = None)
+
+    def drawHint(self):
+        indexList = []
+        for slime in self.slimeList:
+            indexList.append(slime.index)
+        for i in self.hint:
+            if i in indexList:
+                index = indexList.index(i)
+                slime = self.slimeList[index]
+                x = slime.x
+                y = slime.y
+                r = 0.25 * slime.r
+                drawCircle(x, y, r, border = 'white', fill = None)
+                indexList[index] = -1
+    
+    def drawRemind(self):
+        drawLabel("YOU CAN'T MIX THEM!", 200, 200, size = 20, fill = 'red')

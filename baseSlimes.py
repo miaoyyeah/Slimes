@@ -13,7 +13,7 @@ class BaseSlimes:
     def getSlimeValue(name):
         return BaseSlimes.slimeValue[name]
 
-    def __init__(self, index, x = 0, y = 0, r = 100):
+    def __init__(self, index, x = 0, y = 0, r = 88):
         self.x = x
         self.y = y
         self.r = r
