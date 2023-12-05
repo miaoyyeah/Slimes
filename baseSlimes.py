@@ -13,18 +13,27 @@ class BaseSlimes:
     def getSlimeValue(name):
         return BaseSlimes.slimeValue[name]
 
-    def __init__(self, index, x = 0, y = 0, r = 88):
+    def __init__(self, index, x = 0, y = 0, r = 88, status = 'move'):
         self.x = x
         self.y = y
         self.r = r
 
+        self.isSelect = False
         self.index = index
         self.name = BaseSlimes.slimeName[index]
         self.value = BaseSlimes.slimeValue[self.name]
 
-        self.image = Image.open(f"images/baseSlime/baseSlime_{self.name}.png")
-        self.image = self.image.resize((r, r))
-        self.image = CMUImage(self.image)
+        imgName = ['slime', 'flat', 'baseSlime']
+        self.imageList = []
+        for name in imgName:
+            image = Image.open(f"images/baseSlime/{name}_{self.name}.png")
+            if r != 88:
+                image = self.image.resize((r, r))
+            image = CMUImage(image)
+            self.imageList.append(image)
+        self.image = self.imageList[1]
+
+        self.status = 'move'
     
     def __hash__(self):
         return hash(str(self.index) + str(self.name))

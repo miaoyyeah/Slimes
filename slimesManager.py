@@ -1,4 +1,5 @@
 from cmu_graphics import *
+from PIL import Image
 from baseSlimes import BaseSlimes
 import copy
 
@@ -19,11 +20,15 @@ class SlimesManager:
         self.indexPair = []
         self.score = 0
         self.hint = self.canSolve(map.indexList)[:2]
+        self.prevHint = self.hint
         self.slimeCount = self.loadSlimeCount()
         self.undoMix = None
         self.redoMix = None
         self.mixLegal = True
-    
+        image = Image.open(f"images/remind.png")
+        image = image.resize((260, 80))
+        self.remindImg = CMUImage(image)
+
     def loadSlimeCount(self):
         slimeCount = dict()
         for index in range(6):
@@ -43,9 +48,11 @@ class SlimesManager:
                 nextNum = remainL[i]
                 if self.canMix(nextNum, numPair):
                     newNumPair = numPair + [nextNum]
+                    newNumL = []
                     if len(newNumPair) == 2:
-                        newNumPair = self.manageNumPair(newNumPair)
-                    newRemainL = remainL[:i] + remainL[i + 1:]
+                        newNumL = self.manageNumPair(newNumPair)
+                        newNumPair = []
+                    newRemainL = remainL[:i] + remainL[i + 1:] + newNumL
                     newSolL = solL + [remainL[i]]
                     sol = self.solveHelper(newRemainL, newNumPair, newSolL)
                     if sol != None:
@@ -87,9 +94,9 @@ class SlimesManager:
                 else:
                     self.mixLegal = False
             else:
-                self.indexPair = []
+                self.clearPair()
         else:
-            self.indexPair = []
+            self.clearPair()
         return None
     
     # check if mouse click on one slime
@@ -109,7 +116,7 @@ class SlimesManager:
     # elif dif == 0: remove
     def mixSlimes(self):
         if self.indexPair[0] == self.indexPair[1]:
-            self.indexPair = []
+            self.clearPair()
             return
         index1, index2 = self.indexPair[0], self.indexPair[1]
         slimeList = self.slimeList
@@ -138,7 +145,7 @@ class SlimesManager:
             return True
         
         else:
-            self.indexPair = []
+            self.clearPair()
             return False
     
     def managePair(self):
@@ -148,9 +155,15 @@ class SlimesManager:
             self.slimeCount[slime.index] += 1
             self.slimeList.remove(slime)
             self.score += slime.value
+            self.isSelect = False
         self.indexPair = []
         self.redoMix = None
     
+    def clearPair(self):
+        for i in self.indexPair:
+            self.slimeList[i].isSelect = False
+        self.indexPair = []
+
     def canSlimeSolve(self):
         if self.slimeList == []:
             return 'win'
@@ -171,17 +184,22 @@ class SlimesManager:
             for slime in self.undoMix:
                 self.slimeList.append(slime)
                 self.score -= slime.value
+            tmpHint = self.hint
+            self.hint = self.prevHint
+            self.prevHint = tmpHint
             self.undoMix = None
     
     def redo(self):
         if self.redoMix != None:
             self.undoMix = copy.copy(self.redoMix)
-            print(len(self.redoMix))
             if len(self.redoMix) == 3:
                 self.slimeList.append(self.redoMix.pop())
             for slime in self.redoMix:
                 self.score += slime.value
                 self.slimeList.remove(slime)
+            tmpHint = self.hint
+            self.hint = self.prevHint
+            self.prevHint = tmpHint
             self.redoMix = None
 
     #---draw methods------------------------------------------------------------
@@ -193,9 +211,14 @@ class SlimesManager:
     def drawPair(self):
         if len(self.indexPair) == 1:
             i = self.indexPair[0]
-            x, y = self.slimeList[i].x, self.slimeList[i].y
-            r = 0.25 * self.slimeList[i].r
-            drawCircle(x, y, r, border = 'red', fill = None)
+            self.slimeList[i].isSelect = True
+            self.slimeList[i].image = self.slimeList[i].imageList[1]
+            # x, y = self.slimeList[i].x, self.slimeList[i].y
+            # r = 0.2 * self.slimeList[i].r
+            # drawCircle(x, y, r, border = 'red', fill = None)
+        elif len(self.indexPair) == 2:
+            for i in self.indexPair:
+                self.slimeList[i].isSelect = False
 
     def drawHint(self):
         indexList = []
@@ -207,9 +230,10 @@ class SlimesManager:
                 slime = self.slimeList[index]
                 x = slime.x
                 y = slime.y
-                r = 0.25 * slime.r
+                r = 0.2 * slime.r
                 drawCircle(x, y, r, border = 'white', fill = None)
                 indexList[index] = -1
     
     def drawRemind(self):
-        drawLabel("YOU CAN'T MIX THEM!", 200, 200, size = 20, fill = 'red')
+        drawImage(self.remindImg, 450, 310, align = 'center')
+        drawLabel("YOU CAN'T MIX THEM!", 450, 315, size = 20)
