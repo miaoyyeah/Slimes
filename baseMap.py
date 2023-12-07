@@ -8,7 +8,7 @@ class BaseMap:
     gridDict = {7: "hexGrid", 10: "triGrid", 13: "starGrid"}
     counterDict = {7: 40, 10: 60, 13: 90}
 
-    def __init__(self, indexList, x, y, d, h, rows, cols):
+    def __init__(self, indexList, x, y, d, h, rows = 0, cols = 0):
         self.indexList = indexList
         
         if len(indexList) in BaseMap.gridDict:
@@ -62,3 +62,5 @@ baseMap1_nameList = [slimeName[0], slimeName[0],
                      slimeName[3], slimeName[4], slimeName[5],
                      slimeName[2], slimeName[2]]
 baseMap1_indexList = [0, 0, 3, 4, 5, 2, 2]
+
+

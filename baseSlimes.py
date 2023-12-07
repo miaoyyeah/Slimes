@@ -20,6 +20,7 @@ class BaseSlimes:
 
         self.isSelect = False
         self.index = index
+        self.count = 0
         self.name = BaseSlimes.slimeName[index]
         self.value = BaseSlimes.slimeValue[self.name]
 
@@ -37,6 +38,11 @@ class BaseSlimes:
     
     def __hash__(self):
         return hash(str(self.index) + str(self.name))
+    
+    def swing(self):
+        self.count = (self.count + 1) % 2
+        if not self.isSelect:
+            self.image = self.imageList[self.count]
 
     def draw(self):
         drawImage(self.image, self.x, self.y, align = 'center')

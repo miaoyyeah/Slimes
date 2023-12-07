@@ -3,6 +3,12 @@ from PIL import Image
 from baseSlimes import BaseSlimes
 import copy
 
+def swap(x, y):
+    tmp = x
+    x = y
+    y = tmp
+    return x, y
+
 def distance(x1, y1, x2, y2):
     return ((x1 - x2)**2 + (y1 - y2)**2)**0.5
 
@@ -15,12 +21,14 @@ class SlimesManager:
                 slimeList.append(BaseSlimes(map.indexList[pos], x, y))
         return slimeList
 
-    def __init__(self, map):
+    def __init__(self, map, check = True):
         self.slimeList = SlimesManager.loadSlimeList(map)
         self.indexPair = []
         self.score = 0
-        self.hint = self.canSolve(map.indexList)[:2]
-        self.prevHint = self.hint
+        self.check = check
+        if self.check:
+            self.hint = self.canSolve(map.indexList)[:2]
+            self.prevHint = self.hint
         self.slimeCount = self.loadSlimeCount()
         self.undoMix = None
         self.redoMix = None
@@ -28,12 +36,18 @@ class SlimesManager:
         image = Image.open(f"images/remind.png")
         image = image.resize((260, 80))
         self.remindImg = CMUImage(image)
+        self.loadPosList()
 
     def loadSlimeCount(self):
         slimeCount = dict()
         for index in range(6):
             slimeCount[index] = 0
         return slimeCount
+    
+    def loadPosList(self):
+        self.posList = []
+        for slime in self.slimeList:
+            self.posList.append((slime.x, slime.y))
     
     #---canSolve methods--------------------------------------------------------
     
@@ -90,7 +104,8 @@ class SlimesManager:
                 self.indexPair.append(index)
                 status = self.mixSlimes()
                 if status:
-                    return self.canSlimeSolve()
+                    if self.check:
+                        return self.canSlimeSolve()
                 else:
                     self.mixLegal = False
             else:
@@ -184,9 +199,8 @@ class SlimesManager:
             for slime in self.undoMix:
                 self.slimeList.append(slime)
                 self.score -= slime.value
-            tmpHint = self.hint
-            self.hint = self.prevHint
-            self.prevHint = tmpHint
+            if self.check:
+                self.hint, self.prevHint = swap(self.hint, self.prevHint)
             self.undoMix = None
     
     def redo(self):
@@ -197,9 +211,8 @@ class SlimesManager:
             for slime in self.redoMix:
                 self.score += slime.value
                 self.slimeList.remove(slime)
-            tmpHint = self.hint
-            self.hint = self.prevHint
-            self.prevHint = tmpHint
+            if self.check:
+                self.hint, self.prevHint = swap(self.hint, self.prevHint)
             self.redoMix = None
 
     #---draw methods------------------------------------------------------------
@@ -236,4 +249,11 @@ class SlimesManager:
     
     def drawRemind(self):
         drawImage(self.remindImg, 450, 310, align = 'center')
-        drawLabel("YOU CAN'T MIX THEM!", 450, 315, size = 20)
+        if not app.isPause:
+            drawLabel("YOU CAN'T MIX THEM!", 450, 315, size = 20)
+        else:
+            drawLabel("PAUSED", 450, 315, size = 20)
+
+    def swingSlimes(self):
+        for slime in self.slimeList:
+            slime.swing()

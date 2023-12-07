@@ -1,10 +1,13 @@
 from cmu_graphics import *
 from PIL import Image
 import math
+import random
 
+from baseSlimes import BaseSlimes
 from slimesManager import SlimesManager
 from baseMap import BaseMap
 import baseMap
+from infiniteMap import InfiniteMap
 from button import Button
 import generateMap
 
@@ -25,6 +28,7 @@ def onAppStart(app):
     app.welcome_buttonList = welcome_loadButton(app)
     app.evaluate_buttonList = evaluate_loadButton(app)
     app.game_buttonList = game_loadButton(app)
+    app.infinite_buttonList = infinite_loadButton(app)
     app.level_buttonList = level_loadButton(app)
     app.help_buttonList = help_loadButton(app)
 
@@ -33,11 +37,13 @@ def onAppStart(app):
     
     app.remindTime = 2
     app.isPause = False
+    app.pressButton = None
 
     loadBackGround(app)
     loadWheel(app)
     loadHelpBg(app)
     loadSlimeManager(app, generateMap.generateMap(7))
+    loadInfiniteList(app)
 
 def loadSlimeManager(app, mapList):
     resetButton(app)
@@ -98,18 +104,23 @@ def onButtonPress(app, screenName, mouseX, mouseY):
     for button in buttonList:
         if button.checkForPress(mouseX, mouseY):
             button.onMousePressButton()
+            app.pressButton = button
 
 def onButtonRelease(app, screenName, mouseX, mouseY):
     buttonList = getattr(app, f"{screenName}_buttonList")
-    for button in buttonList:
+    button = app.pressButton
+    print(button.text)
+    print(button in buttonList)
+    if button in buttonList and not ((button.text == 'Undo' and 
+                app.slimesManager.undoMix == None) or 
+            (button.text == 'Redo' and 
+                app.slimesManager.redoMix == None)):
         if button.checkForPress(mouseX, mouseY):
-            if not ((button.text == 'Undo' and 
-                     app.slimesManager.undoMix == None) or 
-                    (button.text == 'Redo' and 
-                     app.slimesManager.redoMix == None)):
-                buttonFun = button.onMouseReleaseButton()
-                if buttonFun != None:
-                    screenManage(app, buttonFun)
+            buttonFun = button.onMouseReleaseButton()
+            if buttonFun != None:
+                screenManage(app, buttonFun)
+        else:
+            button.img = button.imgList[0]
 
 def onButtonMove(app, screenName, mouseX, mouseY):
     buttonList = getattr(app, f"{screenName}_buttonList")
@@ -135,14 +146,21 @@ def screenManage(app, screenName):
         app.prevScreen.append(app.curScreen)
         app.curScreen = screenName
 
+#---welcome_buttons-------------------------------------------------------------
+def infiniteButtonFunction(app):
+    loadInfiniteList(app)
+    screenManage(app, 'infinite')
+
 #---welcome---------------------------------------------------------------------
 
 def welcome_loadButton(app):
     startButton = Button('game', text = 'Start', width = 150)
     missionButton = Button('level', text = 'Level', width = 150)
+    infiniteButton = Button(infiniteButtonFunction, text = '∞ Mode', 
+                            selectFun = False, width = 150)
     helpButton = Button('help', text = 'Help', width = 150)
-    buttonList = [startButton, missionButton, helpButton]
-    y = -(len(buttonList) - 1) * 80/2
+    buttonList = [startButton, missionButton, infiniteButton, helpButton]
+    y = -(len(buttonList) - 1) * 40
     for button in buttonList:
         button.x = app.width/2
         button.y = app.height/2 + 150 + y
@@ -249,13 +267,8 @@ def help_onMouseMove(app, mouseX, mouseY):
     onButtonMove(app, 'help', mouseX, mouseY)
 
 def help_onStep(app):
-    app.stepCount += 1
     for manager in app.helpSlimeManager:
-        for slime in manager.slimeList:
-            if not slime.isSelect:
-                slime.image = slime.imageList[app.stepCount % 2]
-    if app.stepCount == 4:
-        app.stepCount = 0
+        manager.swingSlimes()
 
 def help_redrawAll(app):
     drawImage(app.helpImg, 0, 0)
@@ -269,8 +282,9 @@ def help_redrawAll(app):
 #---game_buttons----------------------------------------------------------------
 
 def resetButton(app):
-    app.game_buttonList[1].forbidButton()
-    app.game_buttonList[2].forbidButton()
+    if app.curScreen == 'game':
+        app.game_buttonList[1].forbidButton()
+        app.game_buttonList[2].forbidButton()
 
 def hintButtonFunction(app):
     if app.slimesManager.hint != None and not app.isPause:
@@ -290,21 +304,27 @@ def redoButtonFunction(app):
 
 def reStartButtonFunction(app):
     loadSlimeManager(app, app.tmpMapList)
-    if app.curScreen != 'game':
+    loadInfiniteList(app)
+    if app.curScreen != 'game' and app.curScreen != 'infinite':
         app.curScreen = app.prevScreen.pop()
         setActiveScreen(app.curScreen)
         resetButton(app)
 
 def pauseButtonFunction(app):
+    buttonList = getattr(app, f"{app.curScreen}_buttonList")
     app.isPause = not app.isPause
-    if app.isPause:
-        app.game_buttonList[4].text = 'Continue'
-        # screenManage(app, 'help')
-    else:
-        app.game_buttonList[4].text = 'Pause'
+    for button in buttonList:
+        if button.text == 'Pause':
+            print(button.text)
+            button.text = 'Continue'
+            break
+                # screenManage(app, 'help')
+        elif button.text == 'Continue':
+            button.text = 'Pause'
+            break
 
 #---game------------------------------------------------------------------------
-def drawTimeCounter(app):
+def drawTimeCounter(app, counter = 0):
     drawLabel(app.counter, 100, 40, size=30)
     drawRect(150, 40, app.counterRectWidth, 20, 
              fill = app.counterFill, align = 'left')
@@ -365,9 +385,8 @@ def game_onStep(app):
         if app.remindTime == 0:
             app.slimesManager.mixLegal = True
             app.remindTime = 3
-    for slime in app.slimesManager.slimeList:
-        if not slime.isSelect:
-            slime.image = slime.imageList[app.stepCount % 2]
+    if not app.isPause:
+        app.slimesManager.swingSlimes()
 
 def game_redrawAll(app):
     drawBackGround(app)
@@ -383,14 +402,104 @@ def game_redrawAll(app):
     #     pass
     if app.hintStatus:
         app.slimesManager.drawHint()
-    if not app.slimesManager.mixLegal:
+    if not app.slimesManager.mixLegal or app.isPause:
         app.slimesManager.drawRemind()
 
+#---infinite mode---------------------------------------------------------------
+def infinite_loadButton(app):
+    reStartButton = Button(reStartButtonFunction, 'Restart', selectFun = False)
+    pauseButton = Button(pauseButtonFunction, 'Pause', selectFun = False)
+    helpButton = Button('help', 'Help')
+    backButton = Button(backButtonFunction, 'Back', selectFun = False)
+    buttonList = [reStartButton, pauseButton, helpButton, backButton]
+    x = 0
+    for button in buttonList:
+        button.x = 460 + x
+        button.y = app.height - 50
+        x += 120
+    return buttonList
+
+def loadInfiniteList(app):
+    app.infList = generateMap.generateMap(24, sort = False)
+    app.infMap = InfiniteMap(app.infList, app.width/2, app.height/2, 
+                                               1.12*app.r, 3**0.5*1.12*app.r/2)
+    app.infManager = SlimesManager(app.infMap, check = False)
+    app.infcounter = app.infMap.counter
+    app.infcounterRectWidth = 450
+    app.infShowLen = 7
+    app.infStep = 0
+
+def drawInfTimeCounter(app):
+    drawLabel(app.infcounter, 100, 40, size=30)
+    drawRect(150, 40, app.infcounterRectWidth, 20, 
+             fill = app.counterFill, align = 'left')
+    drawRect(150, 40, 450, 20, fill = None, 
+             border = 'black', align = 'left')
+
+def infinite_onMousePress(app, mouseX, mouseY):
+    if not app.isPause:
+        app.infstatus = app.infManager.mousePressSlimes(mouseX, mouseY)
+    onButtonPress(app, 'infinite', mouseX, mouseY)
+
+def infinite_onMouseRelease(app, mouseX, mouseY):
+    onButtonRelease(app, 'infinite', mouseX, mouseY)
+
+def infinite_onMouseMove(app, mouseX, mouseY):
+    onButtonMove(app, 'infinite', mouseX, mouseY)
+
+def infinite_onStep(app):
+    if not app.isPause:
+        app.infManager.loadPosList()
+        app.EmpPosList = list(set(app.infMap.posList) - set(app.infManager.posList))
+        app.infStep += 1
+        if len(app.EmpPosList) != 0:
+            for pos in app.EmpPosList:
+                x, y = pos
+                newSlime = BaseSlimes(random.randint(0, 5), x, y)
+                app.infManager.slimeList.append(newSlime)
+        if app.infStep == 5:
+            if app.infShowLen < len(app.infManager.slimeList) - 3:
+                app.infShowLen += 2
+                app.infStep = 0
+        app.stepCount += 1
+        if app.stepCount == 4:    
+            if app.infcounter > 0:
+                app.infcounter -= 1
+                app.infcounterRectWidth -= 400 / app.infMap.counter
+            if app.infcounter < 10:
+                app.counterFill = 'tomato'
+            if app.infcounter == 0:
+                loadGrading(app, app.infMap)
+                screenManage(app, 'evaluate')
+            app.stepCount = 0
+        if not app.infManager.mixLegal and not app.isPause:
+            app.remindTime -= 1
+        if app.remindTime == 0:
+            app.infManager.mixLegal = True
+            app.remindTime = 3
+        app.infManager.swingSlimes()
+
+def infinite_redrawAll(app):
+    drawBackGround(app)
+    drawInfTimeCounter(app)
+    app.infManager.drawPair()
+    for i in range(app.infShowLen):
+        app.infManager.slimeList[i].draw()
+    drawButton(app.infinite_buttonList)
+    drawImage(app.wheelImg, app.width/2 + 3 * app.r, app.height/2 - 2 * app.r, 
+              align = 'center')
+    drawLabel(f"Your Point: {app.infManager.score}", 
+              app.width/2 + 3 * app.r, app.height/2 - app.r, size = 20)
+    if not app.infManager.mixLegal or app.isPause:
+        app.infManager.drawRemind()
+        
 #---evaluate--------------------------------------------------------------------
 def loadSlimeCount(app):
     countList = []
+    manager = {'game': app.slimesManager, 'infinite': app.infManager}
     for slime in app.evaluateSlimeList:
-        countList.append(f"X {app.slimesManager.slimeCount[slime.index]}")
+        countList.append(
+            f"X {manager[app.prevScreen[-1]].slimeCount[slime.index]}")
     return countList
 
 def drawSlimeCount(app):
@@ -402,8 +511,14 @@ def drawSlimeCount(app):
         x, y = posList[i]
         drawLabel(countList[i], x, y, size = 20)
 
-def loadGrading(app):
-    grading = math.floor(app.counter * 5 / app.gameMap.counter)
+def loadGrading(app, map = 0):
+    if map == 0:
+        if app.status == 'win':
+            grading = math.floor(app.counter * 5 / app.gameMap.counter)
+        else:
+            grading = 0
+    else:
+        grading = math.floor(app.infManager.score / 600)
     gradingList = ['D', 'C', 'B', 'A', 'S']
     app.gradeImage = Image.open(f"images/grading/{gradingList[grading]}.png")
     app.gradeImage = app.gradeImage.resize((3*app.r, 3*app.r))
@@ -416,35 +531,39 @@ def drawGrading(app):
 def evaluate_loadButton(app):
     backButton = Button('welcome', 'Back', app.width/2 + 60, 
                         app.height/2 + 2.5*app.r, selectFun = False)
+    
     reStartButton = Button(reStartButtonFunction, 'Restart', app.width/2 - 60, 
                            app.height/2 + 2.5*app.r, selectFun = False)
     buttonList = [backButton, reStartButton]
+        
     return buttonList
 
 def evaluate_onStep(app):
-    app.stepCount += 1
     for slime in app.evaluateSlimeList:
-        slime.image = slime.imageList[app.stepCount % 2]
-    if app.stepCount == 4:
-        app.stepCount = 0
+        slime.swing()
 
 def evaluate_redrawAll(app):
     drawBackGround(app)
-    timeBonus = app.counter*10
-    levelScore = app.gameMap.level*100
-    totalScore = timeBonus + levelScore + app.slimesManager.score
-    drawLabel(f"You {app.status} the game!", 
-              app.width/2, app.height/2 - 20, size = 20)
-    drawLabel(f"Time left: {app.gameMap.counter}", 
-              app.width/2, app.height/2 + 20, size = 20)
-    drawLabel(f"Time bonus: {timeBonus}", 
-            app.width/2, app.height/2 + 60, size = 20)
-    drawLabel(f"Level score: {levelScore}", 
-        app.width/2, app.height/2 + 100, size = 20)
-    drawLabel(f"Remove score: {app.slimesManager.score}", 
-              app.width/2, app.height/2 + 140, size = 20)
-    drawLabel(f"Total score: {totalScore}", 
-            app.width/2, app.height/2 + 180, size = 20)
+    if app.prevScreen[-1] == 'game':
+        timeBonus = app.counter*10
+        levelScore = app.gameMap.level*100
+        totalScore = timeBonus + levelScore + app.slimesManager.score
+        drawLabel(f"You {app.status} the game!", 
+                app.width/2, app.height/2 - 20, size = 20)
+        drawLabel(f"Time left: {app.gameMap.counter}",
+                app.width/2, app.height/2 + 20, size = 20)
+        drawLabel(f"Time bonus: {timeBonus}", 
+                app.width/2, app.height/2 + 60, size = 20)
+        drawLabel(f"Level score: {levelScore}", 
+            app.width/2, app.height/2 + 100, size = 20)
+        drawLabel(f"Remove score: {app.slimesManager.score}", 
+                app.width/2, app.height/2 + 140, size = 20)
+        drawLabel(f"Total score: {totalScore}", 
+                app.width/2, app.height/2 + 180, size = 20)
+    else:
+        totalScore = app.infManager.score
+        drawLabel(f"Total score: {totalScore}", 
+                app.width/2, app.height/2, size = 20)
     drawGrading(app)
     drawSlimeCount(app)
     drawButton(app.evaluate_buttonList)

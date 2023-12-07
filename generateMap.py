@@ -17,20 +17,23 @@ def split(indexList):
     indexList.remove(splitIndex)
     indexList.extend(newIndexPair)
 
-def generateMap(n):
+def generateMap(n, sort = True):
     indexList = []
     generatePair(indexList)
-    print(indexList)
+    # print(indexList)
     while len(indexList) < n - 1:
         generateOption = random.randint(0, 1)
         if generateOption == 0:
             generatePair(indexList)
-            print(indexList)
+            # print(indexList)
         else:
             split(indexList)
-            print(indexList)
+            # print(indexList)
     if len(indexList) + 1 == n:
         split(indexList)
-        print(indexList)
-    indexList.sort()
+        # print(indexList)
+    if sort:
+        indexList.sort()
+    else:
+        random.shuffle(indexList)
     return indexList
